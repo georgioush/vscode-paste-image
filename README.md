@@ -20,6 +20,23 @@ Now you can enable `pasteImage.showFilePathConfirmInputBox` to modify file path 
 
 ## Config
 
+- `pasteImage.devOpsMarkdown`
+
+    I enabled devOpsMarkdown option to paste image into /.attachments as if you edit files on DevOps website and put some picture, it'll be saved on the place.
+
+    example settings:
+    {
+        "pasteImage.path": "${projectRoot}/.attachments",
+        "pasteImage.basePath": "/.attachments",
+        "pasteImage.defaultName": "YYYYMMDD-HHmmss",
+        "pasteImage.namePrefix": "image-",
+        "pasteImage.forceUnixStyleSeparator": true,
+        "pasteImage.encodePath": "urlEncodeSpace",
+        "pasteImage.showFilePathConfirmInputBox": false,
+        "pasteImage.devOpsMarkdown": true
+    }
+
+
 - `pasteImage.defaultName`
 
     The default image file name.

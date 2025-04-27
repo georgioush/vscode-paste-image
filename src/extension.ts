@@ -67,6 +67,7 @@ class Paster {
     static defaultNameConfig: string;
     static folderPathConfig: string;
     static basePathConfig: string;
+    static devOpsMarkdownConfig: boolean; 
     static prefixConfig: string;
     static suffixConfig: string;
     static forceUnixStyleSeparatorConfig: boolean;
@@ -127,6 +128,7 @@ class Paster {
         // load other config
         this.prefixConfig = vscode.workspace.getConfiguration('pasteImage')['prefix'];
         this.suffixConfig = vscode.workspace.getConfiguration('pasteImage')['suffix'];
+        this.devOpsMarkdownConfig = vscode.workspace.getConfiguration('pasteImage')['devOpsMarkdown'] || false;
         this.forceUnixStyleSeparatorConfig = vscode.workspace.getConfiguration('pasteImage')['forceUnixStyleSeparator'];
         this.forceUnixStyleSeparatorConfig = !!this.forceUnixStyleSeparatorConfig;
         this.encodePathConfig = vscode.workspace.getConfiguration('pasteImage')['encodePath'];
@@ -175,12 +177,22 @@ class Paster {
                     Logger.showInformationMessage('There is not an image in the clipboard.');
                     return;
                 }
-
-                imagePath = this.renderFilePath(editor.document.languageId, this.basePathConfig, imagePath, this.forceUnixStyleSeparatorConfig, this.prefixConfig, this.suffixConfig);
-
+    
+                // 📌 ここを修正！リンクパスはdocumentのパスを渡す
+                const documentPath = path.dirname(editor.document.uri.fsPath);
+    
+                imagePath = this.renderFilePath(
+                    editor.document.languageId,
+                    documentPath,
+                    imagePath,
+                    this.forceUnixStyleSeparatorConfig,
+                    this.prefixConfig,
+                    this.suffixConfig
+                );
+    
                 editor.edit(edit => {
                     let current = editor.selection;
-
+    
                     if (current.isEmpty) {
                         edit.insert(current.start, imagePath);
                     } else {
@@ -197,6 +209,7 @@ class Paster {
             return;
         });
     }
+    
 
     public static getImagePath(filePath: string, selectText: string, folderPathFromConfig: string, 
         showFilePathConfirmInputBox: boolean, filePathConfirmInputBoxMode: string,
@@ -310,10 +323,10 @@ class Paster {
                 imagePath
             ]);
             powershell.on('error', function (e) {
-                if (e.code == "ENOENT") {
+                if ((e as any).code == "ENOENT") {
                     Logger.showErrorMessage(`The powershell command is not in you PATH environment variables. Please add it and retry.`);
                 } else {
-                    Logger.showErrorMessage(e);
+                    Logger.showErrorMessage(String(e));
                 }
             });
             powershell.on('exit', function (code, signal) {
@@ -329,7 +342,7 @@ class Paster {
 
             let ascript = spawn('osascript', [scriptPath, imagePath]);
             ascript.on('error', function (e) {
-                Logger.showErrorMessage(e);
+                Logger.showErrorMessage(String(e));
             });
             ascript.on('exit', function (code, signal) {
                 // console.log('exit',code,signal);
@@ -344,7 +357,7 @@ class Paster {
 
             let ascript = spawn('sh', [scriptPath, imagePath]);
             ascript.on('error', function (e) {
-                Logger.showErrorMessage(e);
+                Logger.showErrorMessage(String(e));
             });
             ascript.on('exit', function (code, signal) {
                 // console.log('exit',code,signal);
@@ -364,52 +377,73 @@ class Paster {
      * render the image file path dependen on file type
      * e.g. in markdown image file path will render to ![](path)
      */
-    public static renderFilePath(languageId: string, basePath: string, imageFilePath: string, forceUnixStyleSeparator: boolean, prefix: string, suffix: string): string {
-        if (basePath) {
-            imageFilePath = path.relative(basePath, imageFilePath);
+    public static renderFilePath(
+        languageId: string,
+        documentDirPath: string,
+        imageFilePath: string,
+        forceUnixStyleSeparator: boolean,
+        prefix: string,
+        suffix: string
+    ): string {
+        let finalPath = "";
+    
+        if (this.devOpsMarkdownConfig && this.basePathConfig) {
+            // DevOpsモードなら /.attachments/<ファイル名> 固定
+            finalPath = this.basePathConfig + '/' + path.basename(imageFilePath);
+        } else {
+            // 通常モードなら Markdownファイルの場所から相対パス計算
+            finalPath = path.relative(documentDirPath, imageFilePath);
+            if (!finalPath.startsWith('.')) {
+                finalPath = './' + finalPath;
+            }
         }
-
-        if (forceUnixStyleSeparator) {
-            imageFilePath = upath.normalize(imageFilePath);
+    
+        if (forceUnixStyleSeparator && !(this.devOpsMarkdownConfig && this.basePathConfig)) {
+            // ← DevOps モードでない場合だけ normalize する
+            finalPath = upath.normalize(finalPath);
         }
-
-        let originalImagePath = imageFilePath;
+    
+        let originalImagePath = finalPath;
         let ext = path.extname(originalImagePath);
         let fileName = path.basename(originalImagePath);
         let fileNameWithoutExt = path.basename(originalImagePath, ext);
-
-        imageFilePath = `${prefix}${imageFilePath}${suffix}`;
-
-        if (this.encodePathConfig == "urlEncode") {
-            imageFilePath = encodeURI(imageFilePath)
-        } else if (this.encodePathConfig == "urlEncodeSpace") {
-            imageFilePath = imageFilePath.replace(/ /g, "%20");
+    
+        if (this.devOpsMarkdownConfig){
+            // DevOpsモードなら拡張子を除去する
+            prefix = '';
         }
-
+        finalPath = `${prefix}${finalPath}${suffix}`;
+    
+        if (this.encodePathConfig == "urlEncode") {
+            finalPath = encodeURI(finalPath);
+        } else if (this.encodePathConfig == "urlEncodeSpace") {
+            finalPath = finalPath.replace(/ /g, "%20");
+        }
+    
         let imageSyntaxPrefix = "";
-        let imageSyntaxSuffix = ""
+        let imageSyntaxSuffix = "";
         switch (languageId) {
             case "markdown":
-                imageSyntaxPrefix = `![](`
-                imageSyntaxSuffix = `)`
+                imageSyntaxPrefix = `![](`;
+                imageSyntaxSuffix = `)`;
                 break;
             case "asciidoc":
-                imageSyntaxPrefix = `image::`
-                imageSyntaxSuffix = `[]`
+                imageSyntaxPrefix = `image::`;
+                imageSyntaxSuffix = `[]`;
                 break;
         }
-
-        let result = this.insertPatternConfig
+    
+        let result = this.insertPatternConfig;
         result = result.replace(this.PATH_VARIABLE_IMAGE_SYNTAX_PREFIX, imageSyntaxPrefix);
         result = result.replace(this.PATH_VARIABLE_IMAGE_SYNTAX_SUFFIX, imageSyntaxSuffix);
-
-        result = result.replace(this.PATH_VARIABLE_IMAGE_FILE_PATH, imageFilePath);
+    
+        result = result.replace(this.PATH_VARIABLE_IMAGE_FILE_PATH, finalPath);
         result = result.replace(this.PATH_VARIABLE_IMAGE_ORIGINAL_FILE_PATH, originalImagePath);
         result = result.replace(this.PATH_VARIABLE_IMAGE_FILE_NAME, fileName);
         result = result.replace(this.PATH_VARIABLE_IMAGE_FILE_NAME_WITHOUT_EXT, fileNameWithoutExt);
-
+    
         return result;
-    }
+    }    
 
     public static replacePathVariable(pathStr: string, projectRoot: string, curFilePath: string, postFunction: (string) => string = (x) => x): string {
         let currentFileDir = path.dirname(curFilePath);

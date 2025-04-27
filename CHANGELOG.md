@@ -1,5 +1,21 @@
 # Change Log
 
+## 1.0.5 (April 27, 2025) by georgioush
+
+I enabled devOpsMarkdown option to paste image into /.attachments as if you edit files on DevOps website and put some picture, it'll be saved on the place.
+
+{
+    "pasteImage.path": "${projectRoot}/.attachments",
+    "pasteImage.basePath": "/.attachments",
+    "pasteImage.defaultName": "YYYYMMDD-HHmmss",
+    "pasteImage.namePrefix": "image-",
+    "pasteImage.forceUnixStyleSeparator": true,
+    "pasteImage.encodePath": "urlEncodeSpace",
+    "pasteImage.showFilePathConfirmInputBox": false,
+    "pasteImage.devOpsMarkdown": true
+}
+
+
 ## 1.0.4 (January 23, 2018)
 
 - Fix: paste image get blank image issue (windows)

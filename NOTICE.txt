@@ -1,0 +1,13 @@
+Paste Image – akshoji fork
+==========================
+
+This project is a fork of https://github.com/mushanshitiancai/vscode-paste-image.
+Original work © 2016 mushan. Licensed under the MIT License (see LICENSE.txt).
+
+Changes in this fork:
+* DevOpsMarkdown mode – forces '/.attachments/<filename>' links
+* Replaced legacy vscode/bin/compile with modern 'tsc' build
+* Added prefix suppression bug-fix
+* Source migrated to TypeScript 5.8
+
+© 2025 akshoji. Distributed under the MIT License.
