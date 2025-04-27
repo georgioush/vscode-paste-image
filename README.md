@@ -25,6 +25,7 @@ Now you can enable `pasteImage.showFilePathConfirmInputBox` to modify file path 
     I enabled devOpsMarkdown option to paste image into /.attachments as if you edit files on DevOps website and put some picture, it'll be saved on the place.
 
     example settings:
+    ```json
     {
         "pasteImage.path": "${projectRoot}/.attachments",
         "pasteImage.basePath": "/.attachments",
@@ -35,7 +36,7 @@ Now you can enable `pasteImage.showFilePathConfirmInputBox` to modify file path 
         "pasteImage.showFilePathConfirmInputBox": false,
         "pasteImage.devOpsMarkdown": true
     }
-
+    ```
 
 - `pasteImage.defaultName`
 
